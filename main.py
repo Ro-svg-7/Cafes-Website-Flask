@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import Integer, String, Boolean, select
+from sqlalchemy import Integer, String, Boolean, inspect, select
 from sqlalchemy.sql.expression import func
 
 app = Flask(__name__)
@@ -10,8 +10,8 @@ app = Flask(__name__)
 class Base(DeclarativeBase):
     pass
 #Connect to DataBase
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///Cafe.db'
-db = SQLAlchemy(app, model_class=Base)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cafes.db'
+db = SQLAlchemy(model_class=Base)
 db.init_app(app)
 
 #Cafe Table Config
@@ -31,10 +31,22 @@ class Cafe(db.Model):
     coffee_price: Mapped[str] = mapped_column(String(250), nullable=True)
 
     def to_dict(self):
-        return {column.name: getattr(self, column.name) for column in self.__table__.columns}
-
+        return {c.key: getattr(self, c.key) for c in inspect(self).mapper.column_attrs} # type: ignore
 with app.app_context():
+
     db.create_all()
+
+    try:
+        db.session.execute(db.text("ALTER TABLE cafe ADD COLUMN reports INTEGER DEFAULT 0"))
+    except:
+        pass
+
+    try:
+        db.session.execute(db.text("ALTER TABLE cafe ADD COLUMN is_closed BOOLEAN DEFAULT 0"))
+    except:
+        pass
+
+    db.session.commit()
 
 
 @app.route("/")
@@ -53,29 +65,30 @@ def get_random_cafe():
 
 @app.route("/cafes", methods=["GET"])
 def cafes_page():
+    print("CAFES ROUTE HIT 🔥")
     cafes = db.session.execute(db.select(Cafe)).scalars().all()
+    print(f"DEBUG: Found {len(cafes)} cafes in DB")
     return render_template("cafes.html", cafes=cafes)
 
 @app.route("/cafe/<int:cafe_id>", methods=["GET"])
 def cafe_details(cafe_id):
     cafe = db.session.get(Cafe, cafe_id)
-    return render_template("cafe_home.html", cafe=cafe)
-
+    return render_template("cafe_home.html", cafe_id=cafe_id)
 #HTTP POST - Add Record
-@app.route("/add", methods=["POST"])
+@app.route("/cafes/add", methods=["POST"])
 def add_cafe():
     if request.method == "POST":
         new_cafe = Cafe(
-            name=request.form.get("name"),
-            map_url=request.form.get("map_url"),
-            img_url=request.form.get("img_url"),
-            location=request.form.get("location"),
-            seats=request.form.get("seats"),
-            has_toilet=request.form.get("has_toilet") == "true",
-            has_wifi=request.form.get("has_wifi") == "true",
-            has_sockets=request.form.get("has_sockets") == "true",
-            can_take_calls=request.form.get("can_take_calls") == "true",
-            coffee_price=request.form.get("coffee_price")
+            name=request.form.get("name"), # type: ignore
+            map_url=request.form.get("map_url"), # type: ignore
+            img_url=request.form.get("img_url"), # type: ignore
+            location=request.form.get("location"), # type: ignore
+            seats=request.form.get("seats"), # type: ignore
+            has_toilet=request.form.get("has_toilet") == "true", # type: ignore
+            has_wifi=request.form.get("has_wifi") == "true", # type: ignore
+            has_sockets=request.form.get("has_sockets") == "true", # type: ignore
+            can_take_calls=request.form.get("can_take_calls") == "true", # type: ignore
+            coffee_price=request.form.get("coffee_price") # type: ignore
         )
 
         db.session.add(new_cafe)
@@ -111,9 +124,12 @@ def update_price(cafe_id):
     cafe = db.session.get(Cafe, cafe_id)
 
     if cafe:
-        cafe.coffee_price = new_price
+        cafe.coffee_price = new_price # type: ignore
         db.session.commit()
 
         return jsonify(success="Successfullt updated the price.", cafe=cafe.to_dict()),200
     else:
         return jsonify(error={"Not Found": "Sorry, a cafe with that id was not found in the database."}), 404
+    
+if __name__ == "__main__":
+    app.run(debug=True)

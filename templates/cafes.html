@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<main class="main">
+
+  <!-- Page Title Section -->
+  <div class="page-title" data-aos="fade">
+    <div class="heading">
+      <div class="container">
+        <div class="row d-flex justify-content-center text-center">
+          <div class="col-lg-8">
+            <h1>Our Cafés</h1>
+            <p class="mb-0">Explore the best spots to brew, work, and chill.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <nav class="breadcrumbs">
+      <div class="container">
+        <ol>
+          <li><a href="{{ url_for('homepage') }}">Home</a></li>
+          <li class="current">Cafés</li>
+        </ol>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Main Café Grid Section -->
+  <section id="gallery" class="gallery section">
+    <div class="container-fluid" data-aos="fade-up" data-aos-delay="100">
+      <div class="row gy-4 justify-content-center">
+
+        {% for cafe in cafes %}
+        <div class="col-xl-3 col-lg-4 col-md-6">
+          <div class="gallery-item h-100 position-relative">
+            
+            <!-- 1. Image Logic: Dim image if closed -->
+            <img src="{{ cafe.img_url }}" 
+                 class="img-fluid {% if cafe.is_closed %}opacity-25 grayscale{% endif %}" 
+                 alt="{{ cafe.name }}" 
+                 style="height: 300px; width: 100%; object-fit: cover;">
+            
+            <!-- 2. Closed Badge -->
+            {% if cafe.is_closed %}
+            <div class="position-absolute top-50 start-50 translate-middle">
+              <span class="badge bg-danger fs-5">CLOSED</span>
+            </div>
+            {% endif %}
+
+            <!-- 3. Hover Overlay -->
+            <div class="gallery-links d-flex align-items-center justify-content-center">
+              <a href="{{ url_for('cafe_details', cafe_id=cafe.id) }}" class="details-link">
+                <i class="bi bi-link-45deg"></i> View Details
+              </a>
+            </div>
+
+            <!-- 4. Text Content -->
+            <div class="p-3 text-center bg-dark">
+              <h4 class="text-white">{{ cafe.name }}</h4>
+              <p class="text-muted small mb-2">
+                <i class="bi bi-geo-alt"></i> {{ cafe.location }}<br>
+                <i class="bi bi-cash-stack"></i> {{ cafe.coffee_price }}
+              </p>
+              
+              <!-- 5. Amenities -->
+              <div class="amenities border-top border-secondary pt-2">
+                <i class="bi bi-wifi mx-2 {% if cafe.has_wifi %}text-success{% else %}text-muted opacity-50{% endif %}" title="WiFi"></i>
+                <i class="bi bi-plug mx-2 {% if cafe.has_sockets %}text-success{% else %}text-muted opacity-50{% endif %}" title="Power"></i>
+                <i class="bi bi-telephone mx-2 {% if cafe.can_take_calls %}text-success{% else %}text-muted opacity-50{% endif %}" title="Calls"></i>
+                <i class="bi bi-person-badge mx-2 {% if cafe.has_toilet %}text-success{% else %}text-muted opacity-50{% endif %}" title="Toilet"></i>
+              </div>
+
+              <!-- 6. Reporting info (Optional small text) -->
+              {% if cafe.reports > 0 and not cafe.is_closed %}
+              <div class="mt-2">
+                <small class="text-warning"><i class="bi bi-exclamation-circle"></i> {{ cafe.reports }} reports</small>
+              </div>
+              {% endif %}
+            </div>
+
+          </div>
+        </div>
+        {% endfor %}
+
+      </div>
+    </div>
+  </section>
+
+</main>
+{% endblock %}

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, make_response
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import Integer, String, Boolean, inspect, select
@@ -106,6 +106,10 @@ def report_closed(cafe_id):
     if not cafe:
         return "Cafe not found", 404
     
+    reported = request.cookies.get(f"Reported {cafe_id}")
+    if reported:
+        return redirect(url_for("cafe_details", cafe_id = cafe_id))
+    
     cafe.reports += 1
 
     #Threshold Logic
@@ -113,6 +117,9 @@ def report_closed(cafe_id):
         cafe.is_closed = True
     
     db.session.commit()
+
+    response = make_response(redirect(url_for("cafe_details", cafe_id=cafe_id)))
+    response.set_cookie(f"reported {cafe_id}", "true", max_age=60*60*24)
 
     return redirect(url_for("cafe_details", cafe_id=cafe_id))
 

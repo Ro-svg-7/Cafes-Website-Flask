@@ -339,12 +339,21 @@
             <i class="bi bi-arrow-left"></i> Back to Cafés
           </a>
           {% if not cafe.is_closed %}
+          {% set already_reported = request.cookies.get(f'reported' ~cafe_id) %}
+          {% if already reported %}
+          <button class="btn-report" disabled
+            style="opacity: 0.4; cursor:not-allowed;"
+            title="You already reported this cafe">
+            Already Reported
+          </button>
+          {% else %}
           <form action="{{ url_for('report_closed', cafe_id=cafe.id) }}" method="POST" style="margin:0">
             <button type="submit" class="btn-report">
               <i class="bi bi-flag"></i> Report as Closed
             </button>
           </form>
           {% endif %}
+        {% endif %}
         </div>
 
       </div>

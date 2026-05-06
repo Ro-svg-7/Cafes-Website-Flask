@@ -1,10 +1,26 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, make_response
+from flask import Flask, render_template, request, jsonify, redirect, url_for, make_response, abort
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Boolean, inspect, select
 from sqlalchemy.sql.expression import func
+from flask_login import UserMixin, login_user, LoginManager, current_user, logout_user, login_required
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+app.secret_key = 'my-secret-key'
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    print(user_id)
+    user_found = db.session.execute(db.select(Users).where(Users.id == user_id)).scalar()
+    if user_found:
+        print("User loaded successfully.")
+        return user_found
+    print("User not loaded")
+    return abort(404)
 
 #Creating DataBase
 class Base(DeclarativeBase):
@@ -17,7 +33,6 @@ db.init_app(app)
 #Cafe Table Config
 class Cafe(db.Model):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    reports: Mapped[int] = mapped_column(Integer, default=0)
     name: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
     map_url: Mapped[str] = mapped_column(String(250), unique=False, nullable=True)
     img_url: Mapped[str] = mapped_column(String(250), unique=False, nullable=False)
@@ -30,8 +45,41 @@ class Cafe(db.Model):
     is_closed: Mapped[bool] = mapped_column(Boolean, default=False)
     coffee_price: Mapped[str] = mapped_column(String(250), nullable=True)
 
+    reports = relationship("Reports", back_populates="cafe")
+
     def to_dict(self):
         return {c.key: getattr(self, c.key) for c in inspect(self).mapper.column_attrs} # type: ignore
+
+class Users(UserMixin, db.Model):
+
+    def __init__(self, email: str, password: str, name:str):
+        self.email = email
+        self.password = password
+        self.name = name
+
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(250), unique=True, nullable=False)
+    password: Mapped[str] = mapped_column(String(250), nullable=False)
+    name: Mapped[str] = mapped_column(String(250), nullable=False)
+
+    reports = relationship("Reports", back_populates="user")
+    
+class Reports(db.Model):
+
+    def __init__(self, user_id: int, cafe_id: int):
+        self.user_id = user_id
+        self.cafe_id = cafe_id
+
+    __tablename__ = "reports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    cafe_id: Mapped[int] = mapped_column(Integer, db.ForeignKey("cafe.id"))
+    user_id: Mapped[int] = mapped_column(Integer, db.ForeignKey("users.id"))
+
+    user = relationship("Users", back_populates="reports")
+    cafe = relationship("Cafe", back_populates="reports")
+
 with app.app_context():
 
     db.create_all()
@@ -47,6 +95,61 @@ with app.app_context():
         pass
 
     db.session.commit()
+
+
+@app.route("/register", methods=["POST", "GET"])
+def register():
+    if request.method == "POST":
+        email = request.form.get("email", "")
+        password = request.form.get("password", "")
+        name = request.form.get("name", "")
+
+        exisiting_user = db.session.execute(
+            select(Users).where(Users.email == email)
+        ).scalar()
+
+        if exisiting_user:
+            return "User already exists. Please log in instead."
+        
+        hashed_password = generate_password_hash(password)
+
+        new_user = Users(
+            email = email,
+            password = hashed_password,
+            name = name
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        login_user(new_user)
+        return redirect(url_for("cafes_page"))
+    return render_template("register.html")
+    
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email", "")
+        password = request.form.get("password", "")
+
+        user = db.session.execute(
+            select(Users).where(Users.email == email)
+        ).scalar()
+
+        if not user:
+            return "User Not Found."
+        
+        if not check_password_hash(user.password, password):
+            return "Wrong Password. Please Try Again."
+
+        login_user(user)
+        return redirect(url_for("cafes_page"))
+    return render_template("login.html")
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("homepage"))
 
 
 @app.route("/")
@@ -84,11 +187,11 @@ def add_cafe():
             img_url=request.form.get("img_url"), # type: ignore
             location=request.form.get("location"), # type: ignore
             seats=request.form.get("seats"), # type: ignore
-            has_toilet=request.form.get("has_toilet") == "true" or request.form.get("has_wifi") == "on", # type: ignore
-            has_wifi=request.form.get("has_wifi") == "true", # type: ignore
-            has_sockets=request.form.get("has_sockets") == "true", # type: ignore
-            can_take_calls=request.form.get("can_take_calls") == "true", # type: ignore
-            coffee_price=request.form.get("coffee_price") # type: ignore+
+            has_toilet=request.form.get("has_toilet") == "on", # type: ignore
+            has_wifi=request.form.get("has_wifi") == "on", # type: ignore
+            has_sockets=request.form.get("has_sockets") == "on", # type: ignore
+            can_take_calls=request.form.get("can_take_calls") == "on", # type: ignore
+            coffee_price=request.form.get("coffee_price") # type: ignore
         )
 
         db.session.add(new_cafe)
@@ -100,26 +203,39 @@ def add_cafe():
 
 #HTTP DELETE - Report Record 
 @app.route("/report-closed/<int:cafe_id>", methods=["POST"])
+@login_required
 def report_closed(cafe_id):
     cafe = db.session.get(Cafe, cafe_id)
 
     if not cafe:
         return "Cafe not found", 404
-    
-    reported = request.cookies.get(f"Reported {cafe_id}")
-    if reported:
-        return redirect(url_for("cafe_details", cafe_id = cafe_id))
-    
-    cafe.reports += 1
+   
+    existing_report = db.session.execute(
+        select(Reports).where(
+            Reports.user_id == current_user.id, 
+            Reports.cafe_id == cafe_id
+        )
+    ).scalar()
 
-    #Threshold Logic
-    if cafe.reports >= 3:
+    if existing_report:
+        return redirect(url_for("cafe_details", cafe_id=cafe_id))
+    
+    new_report = Reports(
+        user_id = current_user.id,
+        cafe_id = cafe_id
+    )
+
+    db.session.add(new_report)
+
+    report_count = db.session.execute(
+        select(Reports.user_id).where(Reports.cafe_id == cafe_id)
+        .distinct()
+    ).all()
+
+    if len(report_count) >= 3:
         cafe.is_closed = True
-    
-    db.session.commit()
 
-    response = make_response(redirect(url_for("cafe_details", cafe_id=cafe_id)))
-    response.set_cookie(f"reported {cafe_id}", "true", max_age=60*60*24)
+    db.session.commit()
 
     return redirect(url_for("cafe_details", cafe_id=cafe_id))
 

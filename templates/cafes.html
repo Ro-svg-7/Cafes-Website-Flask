@@ -1,9 +1,115 @@
 {% extends "base.html" %}
 
 {% block content %}
-<main class="main">
 
-  <!-- Page Title Section -->
+<style>
+  .cafe-split-layout {
+    display: flex;
+    height: 75vh;
+    overflow: hidden;
+    margin-top: 0;
+  }
+
+  .cafe-list-panel {
+    width: 520px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+  }
+  .cafe-list-panel::-webkit-scrollbar { width: 4px; }
+  .cafe-list-panel::-webkit-scrollbar-thumb { background: #333; }
+
+  .cafe-card-row {
+    display: flex;
+    gap: 1rem;
+    padding: 1.1rem 1.2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    cursor: pointer;
+    transition: background 0.15s;
+    align-items: flex-start;
+  }
+  .cafe-card-row:hover { background: rgba(255,255,255,0.04); }
+  .cafe-card-row.active {
+    background: rgba(255,255,255,0.06);
+    border-left: 3px solid #4caf7d;
+  }
+  .cafe-card-row.closed { opacity: 0.45; }
+
+  .cafe-thumb {
+    width: 90px;
+    height: 90px;
+    min-width: 76px;
+    object-fit: cover;
+    border-radius: 6px;
+    flex-shrink: 0;
+    background: #222;
+    display: block;
+  }
+  .cafe-card-body { flex: 1; min-width: 0; }
+  .cafe-card-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.2rem;
+    color: #fff;
+  }
+  .cafe-card-loc {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 0.35rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cafe-badges { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+  .cbadge {
+    font-size: 0.67rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .cafe-detail-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  color: #4caf7d;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+  }
+  .cafe-detail-link:hover { color: #6ddfa0; }
+  .cbadge-wifi  { background: rgba(76,175,125,0.15); color: #4caf7d; }
+  .cbadge-price { background: rgba(245,200,66,0.12);  color: #f5c842; }
+  .cbadge-closed{ background: rgba(255,80,80,0.12);   color: #ff6060; }
+  .cbadge-seats { background: rgba(150,150,220,0.12); color: #aab; }
+
+  .map-panel { flex: 1; position: relative; min-width: 0; }
+  #cafe-map { width: 100%; height: 100%; }
+
+  #cafe-map {
+      width: 100%;
+      height: 75vh;
+      min-height:500px;
+  }
+  
+  .leaflet-popup-content-wrapper {
+    background: #1c1c1c !important;
+    color: #e8e4dd !important;
+    border: 1px solid #2a2a2a !important;
+    border-radius: 8px !important;
+  }
+  .leaflet-popup-tip { background: #1c1c1c !important; }
+  .popup-name  { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; }
+  .popup-price { color: #f5c842; font-size: 0.78rem; }
+  .popup-wifi  { color: #4caf7d; font-size: 0.75rem; margin-top: 0.2rem; }
+</style>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
   <div class="page-title" data-aos="fade">
     <div class="heading">
       <div class="container">
@@ -15,76 +121,158 @@
         </div>
       </div>
     </div>
-    <nav class="breadcrumbs">
-      <div class="container">
-        <ol>
-          <li><a href="{{ url_for('homepage') }}">Home</a></li>
-          <li class="current">Cafés</li>
-        </ol>
-      </div>
-    </nav>
   </div>
 
-  <!-- Main Café Grid Section -->
-  <section id="gallery" class="gallery section">
-    <div class="container-fluid" data-aos="fade-up" data-aos-delay="100">
-      <div class="row gy-4 justify-content-center">
+  <div class="cafe-split-layout">
 
-        {% for cafe in cafes %}
-        <div class="col-xl-3 col-lg-4 col-md-6">
-          <div class="gallery-item h-100 position-relative">
-            
-            <!-- 1. Image Logic: Dim image if closed -->
-            <img src="{{ cafe.img_url }}" 
-                 class="img-fluid {% if cafe.is_closed %}opacity-25 grayscale{% endif %}" 
-                 alt="{{ cafe.name }}" 
-                 style="height: 300px; width: 100%; object-fit: cover;">
-            
-            <!-- 2. Closed Badge -->
-            {% if cafe.is_closed %}
-            <div class="position-absolute top-50 start-50 translate-middle">
-              <span class="badge bg-danger fs-5">CLOSED</span>
-            </div>
+    <!-- LEFT: List -->
+    <div class="cafe-list-panel">
+      <div class="px-3 py-2 d-flex justify-content-between align-items-center"
+           style="border-bottom:1px solid rgba(255,255,255,0.08)">
+        <small class="text-muted"><strong class="text-white">{{ cafes|length }}</strong> cafés</small>
+        <small class="text-muted">Click to locate on map</small>
+      </div>
+
+      {% for cafe in cafes %}
+      <div class="cafe-card-row {% if cafe.is_closed %}closed{% endif %}"
+           id="card-{{ cafe.id }}"
+           onclick="focusCafe({{ cafe.id }}, this)">
+
+        <img class="cafe-thumb"
+             src="{{ cafe.img_url }}"
+             alt="{{ cafe.name }}"
+             onerror="this.src='https://placehold.co/76x76/1c1c1c/555?text=☕'">
+
+        <div class="cafe-card-body">
+          <div class="cafe-card-name">{{ cafe.name }}</div>
+          <div class="cafe-card-loc"><i class="bi bi-geo-alt"></i> {{ cafe.location }}</div>
+          <div class="cafe-badges">
+            {% if cafe.has_wifi %}
+            <span class="cbadge cbadge-wifi">📶 WiFi</span>
             {% endif %}
-
-            <!-- 3. Hover Overlay -->
-            <div class="gallery-links d-flex align-items-center justify-content-center">
-              <a href="{{ url_for('cafe_details', cafe_id=cafe.id) }}" class="details-link">
-                <i class="bi bi-link-45deg"></i> View Details
-              </a>
-            </div>
-
-            <!-- 4. Text Content -->
-            <div class="p-3 text-center bg-dark">
-              <h4 class="text-white">{{ cafe.name }}</h4>
-              <p class="text-muted small mb-2">
-                <i class="bi bi-geo-alt"></i> {{ cafe.location }}<br>
-                <i class="bi bi-cash-stack"></i> {{ cafe.coffee_price }}
-              </p>
-              
-              <!-- 5. Amenities -->
-              <div class="amenities border-top border-secondary pt-2">
-                <i class="bi bi-wifi mx-2 {% if cafe.has_wifi %}text-success{% else %}text-muted opacity-50{% endif %}" title="WiFi"></i>
-                <i class="bi bi-plug mx-2 {% if cafe.has_sockets %}text-success{% else %}text-muted opacity-50{% endif %}" title="Power"></i>
-                <i class="bi bi-telephone mx-2 {% if cafe.can_take_calls %}text-success{% else %}text-muted opacity-50{% endif %}" title="Calls"></i>
-                <i class="bi bi-person-badge mx-2 {% if cafe.has_toilet %}text-success{% else %}text-muted opacity-50{% endif %}" title="Toilet"></i>
-              </div>
-
-              <!-- 6. Reporting info (Optional small text) -->
-              {% if cafe.reports > 0 and not cafe.is_closed %}
-              <div class="mt-2">
-                <small class="text-warning"><i class="bi bi-exclamation-circle"></i> {{ cafe.reports }} reports</small>
-              </div>
-              {% endif %}
-            </div>
-
+            {% if cafe.coffee_price %}
+            <span class="cbadge cbadge-price">☕ {{ cafe.coffee_price }}</span>
+            {% endif %}
+            {% if cafe.seats %}
+            <span class="cbadge cbadge-seats">🪑 {{ cafe.seats }}</span>
+            {% endif %}
+            {% if cafe.is_closed %}
+            <span class="cbadge cbadge-closed">⛔ Closed</span>
+            {% endif %}
           </div>
+          <a href="{{ url_for('cafe_details', cafe_id=cafe.id) }}" 
+            class="cafe-detail-link"
+            onclick="event.stopPropagation()">
+            View Details <i class="bi bi-arrow-right"></i>
+          </a>
         </div>
-        {% endfor %}
 
       </div>
+      {% else %}
+      <div class="text-center text-muted py-5">
+        No cafés yet. <a href="{{ url_for('add_cafe') }}" style="color:#4caf7d">Add the first one!</a>
+      </div>
+      {% endfor %}
     </div>
-  </section>
 
-</main>
+    <!-- RIGHT: Map -->
+    <div class="map-panel">
+      <div id="cafe-map"></div>
+    </div>
+
+  </div>
+{% endblock %}
+
+
+{% block scripts %}
+{{ super() }}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('cafe-map').setView([51.505, -0.09], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19
+  }).addTo(map);
+
+  const greenIcon = L.divIcon({
+    html: `<div style="width:22px;height:22px;background:#4caf7d;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,0.5)"></div>`,
+    iconSize:[22,22], iconAnchor:[11,22], popupAnchor:[0,-24], className:''
+  });
+  const closedIcon = L.divIcon({
+    html: `<div style="width:22px;height:22px;background:#ff6060;border:2px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 2px 6px rgba(0,0,0,0.5)"></div>`,
+    iconSize:[22,22], iconAnchor:[11,22], popupAnchor:[0,-24], className:''
+  });
+
+  const cafes = [
+    {% for cafe in cafes %}
+    {
+      id: {{ cafe.id }},
+      name: {{ cafe.name | tojson }},
+      location: {{ cafe.location | tojson }},
+      map_url: {{ (cafe.map_url or '') | tojson }},
+      coffee_price: {{ (cafe.coffee_price or '') | tojson }},
+      has_wifi: {{ cafe.has_wifi | tojson }},
+      is_closed: {{ cafe.is_closed | tojson }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ];
+
+  const markers = {};
+  const allCoords = [];
+
+  function extractLatLng(url) {
+    if (!url) return null;
+    const m1 = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (m1) return [parseFloat(m1[1]), parseFloat(m1[2])];
+    const m2 = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (m2) return [parseFloat(m2[1]), parseFloat(m2[2])];
+    return null;
+  }
+
+  async function geocode(name, location) {
+    try {
+      const q = encodeURIComponent(name + ' ' + location);
+      const r = await fetch('https://nominatim.openstreetmap.org/search?q=' + q + '&format=json&limit=1');
+      const d = await r.json();
+      if (d.length) return [parseFloat(d[0].lat), parseFloat(d[0].lon)];
+    } catch(e) {}
+    return null;
+  }
+
+  async function loadMarkers() {
+    for (const cafe of cafes) {
+      let coords = extractLatLng(cafe.map_url) || await geocode(cafe.name, cafe.location);
+      if (!coords) coords = [51.505 + (Math.random()-0.5)*0.1, -0.09 + (Math.random()-0.5)*0.15];
+
+      const popup = `
+        <div class="popup-name">${cafe.name}</div>
+        <div class="popup-price">${cafe.coffee_price ? '☕ ' + cafe.coffee_price : ''}</div>
+        <div class="popup-wifi">${cafe.has_wifi ? '📶 WiFi available' : ''}</div>
+        ${cafe.is_closed ? '<div style="color:#ff6060;font-size:0.73rem;margin-top:0.2rem">⛔ Reported closed</div>' : ''}
+      `;
+
+      const marker = L.marker(coords, { icon: cafe.is_closed ? closedIcon : greenIcon })
+        .addTo(map).bindPopup(popup);
+
+      marker.on('click', () => {
+        document.querySelectorAll('.cafe-card-row').forEach(c => c.classList.remove('active'));
+        const card = document.getElementById('card-' + cafe.id);
+        if (card) { card.classList.add('active'); card.scrollIntoView({ behavior:'smooth', block:'center' }); }
+      });
+
+      markers[cafe.id] = { marker, coords };
+      allCoords.push(coords);
+    }
+    if (allCoords.length) map.fitBounds(allCoords, { padding:[40,40] });
+  }
+
+  loadMarkers();
+
+  setTimeout(() => map.invalidateSize(), 300);
+  function focusCafe(id, el) {
+    document.querySelectorAll('.cafe-card-row').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    const m = markers[id];
+    if (m) { map.setView(m.coords, 16, { animate:true }); m.marker.openPopup(); }
+  }
+</script>
 {% endblock %}

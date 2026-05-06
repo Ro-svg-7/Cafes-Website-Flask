@@ -73,9 +73,9 @@ def cafes_page():
 @app.route("/cafe/<int:cafe_id>", methods=["GET"])
 def cafe_details(cafe_id):
     cafe = db.session.get(Cafe, cafe_id)
-    return render_template("cafe_home.html", cafe_id=cafe_id)
+    return render_template("cafe_home.html", cafe=cafe)
 #HTTP POST - Add Record
-@app.route("/cafes/add", methods=["POST"])
+@app.route("/cafes/add", methods=["GET", "POST"])
 def add_cafe():
     if request.method == "POST":
         new_cafe = Cafe(
@@ -84,11 +84,11 @@ def add_cafe():
             img_url=request.form.get("img_url"), # type: ignore
             location=request.form.get("location"), # type: ignore
             seats=request.form.get("seats"), # type: ignore
-            has_toilet=request.form.get("has_toilet") == "true", # type: ignore
+            has_toilet=request.form.get("has_toilet") == "true" or request.form.get("has_wifi") == "on", # type: ignore
             has_wifi=request.form.get("has_wifi") == "true", # type: ignore
             has_sockets=request.form.get("has_sockets") == "true", # type: ignore
             can_take_calls=request.form.get("can_take_calls") == "true", # type: ignore
-            coffee_price=request.form.get("coffee_price") # type: ignore
+            coffee_price=request.form.get("coffee_price") # type: ignore+
         )
 
         db.session.add(new_cafe)
@@ -114,7 +114,7 @@ def report_closed(cafe_id):
     
     db.session.commit()
 
-    return redirect(url_for("cafe_details"))
+    return redirect(url_for("cafe_details", cafe_id=cafe_id))
 
 @app.route("/update-price/<int:cafe_id>", methods=["POST"])
 def update_price(cafe_id):

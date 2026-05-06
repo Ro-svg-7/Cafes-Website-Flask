@@ -1,0 +1,307 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+  .add-cafe-page {
+    min-height: 85vh;
+    background: #0d0d0d;
+    padding: 2rem 0 4rem;
+  }
+
+  .add-cafe-container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  .add-cafe-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .add-cafe-header .icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .add-cafe-header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.4rem;
+  }
+
+  .add-cafe-header p {
+    color: #666;
+    font-size: 0.9rem;
+  }
+
+  .add-cafe-card {
+    background: #161616;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    padding: 2.2rem 2.5rem;
+  }
+
+  .form-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #555;
+    margin-bottom: 1rem;
+    margin-top: 1.8rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .form-section-title:first-of-type { margin-top: 0; }
+
+  .form-group {
+    margin-bottom: 1.2rem;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-bottom: 0.4rem;
+    font-weight: 500;
+  }
+
+  .form-label span.required {
+    color: #ff6060;
+    margin-left: 0.2rem;
+  }
+
+  .form-control-dark {
+    width: 100%;
+    background: #0d0d0d;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: #fff;
+    padding: 0.7rem 1rem;
+    font-size: 0.88rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .form-control-dark::placeholder { color: #444; }
+  .form-control-dark:focus {
+    border-color: #4caf7d;
+    box-shadow: 0 0 0 3px rgba(76,175,125,0.1);
+  }
+
+  /* Two column row */
+  .form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  /* Toggle group for yes/no fields */
+  .toggle-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+  }
+
+  .toggle-item {
+    background: #0d0d0d;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .toggle-item:hover { border-color: rgba(76,175,125,0.3); }
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #ccc;
+  }
+
+  /* Custom toggle switch */
+  .toggle-switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .toggle-switch input { display: none; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: #2a2a2a;
+    border-radius: 50px;
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: #555;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-track {
+    background: rgba(76,175,125,0.25);
+  }
+  .toggle-switch input:checked + .toggle-track::after {
+    background: #4caf7d;
+    transform: translateX(18px);
+  }
+
+  /* Submit button */
+  .btn-submit {
+    width: 100%;
+    background: #4caf7d;
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    padding: 0.9rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .btn-submit:hover { background: #5dca93; }
+  .btn-submit:active { transform: scale(0.99); }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #555;
+    font-size: 0.82rem;
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: #aaa; }
+</style>
+
+<main class="main add-cafe-page">
+  <div class="add-cafe-container">
+
+    <!-- Back link -->
+    <a href="{{ url_for('cafes_page') }}" class="back-link">
+      <i class="bi bi-arrow-left"></i> Back to Cafés
+    </a>
+
+    <!-- Header -->
+    <div class="add-cafe-header">
+      <div class="icon">☕</div>
+      <h1>Add Your Café</h1>
+      <p>Know a great spot? Share it with the community.</p>
+    </div>
+
+    <!-- Form card -->
+    <div class="add-cafe-card">
+      <form action="{{ url_for('add_cafe') }}" method="POST">
+
+        <!-- Basic Info -->
+        <div class="form-section-title">Basic Info</div>
+
+        <div class="form-group">
+          <label class="form-label">Café Name <span class="required">*</span></label>
+          <input type="text" name="name" class="form-control-dark"
+                 placeholder="e.g. The Corner Brew" required>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-group">
+            <label class="form-label">Location <span class="required">*</span></label>
+            <input type="text" name="location" class="form-control-dark"
+                   placeholder="e.g. Shoreditch" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Coffee Price</label>
+            <input type="text" name="coffee_price" class="form-control-dark"
+                   placeholder="e.g. £2.50">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Image URL <span class="required">*</span></label>
+          <input type="url" name="img_url" class="form-control-dark"
+                 placeholder="https://..." required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Google Maps URL</label>
+          <input type="url" name="map_url" class="form-control-dark"
+                 placeholder="https://maps.google.com/...">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Number of Seats <span class="required">*</span></label>
+          <input type="text" name="seats" class="form-control-dark"
+                 placeholder="e.g. 20-30" required>
+        </div>
+
+        <!-- Amenities -->
+        <div class="form-section-title">Amenities</div>
+
+        <div class="toggle-group">
+
+          <label class="toggle-item">
+            <span class="toggle-label">📶 WiFi</span>
+            <div class="toggle-switch">
+              <input type="checkbox" name="has_wifi" value="true">
+              <div class="toggle-track"></div>
+            </div>
+          </label>
+
+          <label class="toggle-item">
+            <span class="toggle-label">🔌 Power Sockets</span>
+            <div class="toggle-switch">
+              <input type="checkbox" name="has_sockets" value="true">
+              <div class="toggle-track"></div>
+            </div>
+          </label>
+
+          <label class="toggle-item">
+            <span class="toggle-label">🚻 Toilet</span>
+            <div class="toggle-switch">
+              <input type="checkbox" name="has_toilet" value="true">
+              <div class="toggle-track"></div>
+            </div>
+          </label>
+
+          <label class="toggle-item">
+            <span class="toggle-label">📞 Can Take Calls</span>
+            <div class="toggle-switch">
+              <input type="checkbox" name="can_take_calls" value="true">
+              <div class="toggle-track"></div>
+            </div>
+          </label>
+
+        </div>
+
+        <button type="submit" class="btn-submit">
+          <i class="bi bi-plus-circle"></i> Add Café
+        </button>
+
+      </form>
+    </div>
+
+  </div>
+</main>
+
+{% endblock %}

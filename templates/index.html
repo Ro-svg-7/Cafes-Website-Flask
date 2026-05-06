@@ -1,18 +1,538 @@
 {% extends "base.html" %}
 
 {% block title %}Home - SpotBrew{% endblock %}
-{% block body_class %}index-page{% endblock%}
+{% block body_class %}index-page{% endblock %}
 
 {% block content %}
-<section id="hero" class="hero-section">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-6 text-center" data-aos="fade-up">
-                <h2>Find Your Perfect <span>Coffee Spot</span></h2>
-                <p>Discover cafes with wifi, power sockets, and great vibes.</p>
-                <a href="{{ url_for('cafes_page') }}" class="btn-get-started">Browse Cafes</a>
-            </div>
-        </div>
+
+<style>
+  .hero-section {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 1.5rem 2rem;
+    text-align: center;
+    position: relative;
+    background: url("{{ url_for('static', filename='assets/img/bg.jpg')}}") center center / cover no-repeat;
+  }
+
+  .hero-section::before{
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.82);
+    z-index: 0;
+  }
+
+  .hero-section > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-section h2 {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+  }
+
+  .hero-section h2 span { color: #4caf7d; }
+
+  .hero-section p {
+    color: #777;
+    font-size: 1.05rem;
+    margin-bottom: 2rem;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn-lucky {
+  background: transparent;
+  color: #f5c842;
+  padding: 0.75rem 1.8rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid rgba(245,200,66,0.3);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  position: relative;
+  overflow: hidden;
+}
+.btn-lucky:hover {
+  background: rgba(245,200,66,0.08);
+  border-color: rgba(245,200,66,0.6);
+  transform: rotate(-1deg) scale(1.03);
+}
+.btn-lucky:active { transform: scale(0.97); }
+.btn-lucky.spinning { animation: wiggle 0.4s ease; }
+
+@keyframes wiggle {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(-4deg) scale(1.05); }
+  50%  { transform: rotate(4deg) scale(1.05); }
+  75%  { transform: rotate(-2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.lucky-popup {
+  position: fixed;
+  bottom: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: #161616;
+  border: 1px solid rgba(245,200,66,0.25);
+  border-radius: 14px;
+  padding: 1.2rem 1.5rem;
+  width: 320px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  transition: bottom 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  text-decoration: none;
+  display: block;
+}
+.lucky-popup.show { bottom: 2rem; }
+
+.lucky-popup-tag {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #f5c842;
+  margin-bottom: 0.5rem;
+}
+.lucky-popup img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  display: block;
+}
+.lucky-popup-name {
+  font-weight: 700;
+  color: #fff;
+  font-size: 1rem;
+  margin-bottom: 0.2rem;
+}
+.lucky-popup-loc {
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 0.6rem;
+}
+.lucky-popup-badges {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+.lucky-popup-cta {
+  font-size: 0.78rem;
+  color: #4caf7d;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.lucky-dismiss {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.9rem;
+  background: none;
+  border: none;
+  color: #444;
+  font-size: 1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+.lucky-dismiss:hover { color: #888; }
+
+  .btn-primary-green {
+    background: #4caf7d;
+    color: #000;
+    padding: 0.75rem 1.8rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .btn-primary-green:hover { background: #5dca93; color: #000; }
+
+  .btn-outline-white {
+    background: transparent;
+    color: #fff;
+    padding: 0.75rem 1.8rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.15);
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .btn-outline-white:hover {
+    border-color: rgba(255,255,255,0.4);
+    color: #fff;
+    background: rgba(255,255,255,0.05);
+  }
+
+  /* Preview section */
+  .preview-section {
+    background: #0d0d0d;
+    padding: 2rem 1.5rem 4rem;
+    position: relative;
+  }
+
+  .preview-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: url("{{ url_for('static', filename='assets/img/beans.jpg') }}")center center / cover no-repeat;
+    opacity: 0.04;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .preview-label {
+    text-align: center;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #444;
+    margin-bottom: 1.5rem;
+  }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .preview-card {
+    background: #161616;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    display: block;
+  }
+  .preview-card:hover {
+    border-color: rgba(76,175,125,0.3);
+    transform: translateY(-2px);
+  }
+
+  .preview-card img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .preview-card-body {
+    padding: 1rem 1.1rem;
+  }
+
+  .preview-card-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #fff;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .preview-card-loc {
+    font-size: 0.75rem;
+    color: #666;
+    margin-bottom: 0.6rem;
+  }
+
+  .preview-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .preview-section >* {
+        position: relative;
+        z-index: 1;
+  }
+
+  .pbadge {
+    font-size: 0.67rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .pbadge-wifi  { background: rgba(76,175,125,0.15); color: #4caf7d; }
+  .pbadge-price { background: rgba(245,200,66,0.12);  color: #f5c842; }
+  .pbadge-seats { background: rgba(150,150,220,0.12); color: #aab; }
+
+  /* Lock overlay on cards for guests */
+  .preview-card-locked {
+    position: relative;
+  }
+  .preview-card-locked::after {
+    content: '🔒 Sign in to view';
+    position: absolute;
+    inset: 0;
+    background: rgba(13,13,13,0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    color: #777;
+    border-radius: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .preview-card-locked:hover::after { opacity: 1; }
+
+  /* CTA banner at the bottom */
+  .cta-banner {
+    max-width: 1100px;
+    margin: 2rem auto 0;
+    background: rgba(76,175,125,0.06);
+    border: 1px solid rgba(76,175,125,0.15);
+    border-radius: 14px;
+    padding: 2rem;
+    text-align: center;
+  }
+  .cta-banner h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.5rem;
+  }
+  .cta-banner p {
+    color: #666;
+    font-size: 0.88rem;
+    margin-bottom: 1.2rem;
+  }
+  .cta-buttons {
+    display: flex;
+    gap: 0.8rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+.index-page .main {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.hero-section {
+  min-height: 75vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  padding: 0 1.5rem !important;
+  margin: 0 !important;
+  background: url("{{ url_for('static', filename='assets/img/bg.jpg') }}") center center / cover no-repeat;
+  background-size: cover !important;
+}
+
+.hero-section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  z-index: 0;
+}
+
+.hero-section > * {
+  position: relative;
+  z-index: 1;
+}
+</style>
+
+<!-- HERO  SECTION -->
+<section class="hero-section">
+  <div>
+    <div data-aos="fade-up">
+      <h2>Find Your Perfect <span>Coffee Spot</span></h2>
+      <p>Discover cafés with wifi, power sockets, and great vibes — curated by the community.</p>
+
+      <div class="hero-buttons">
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('cafes_page') }}" class="btn-primary-green">
+            <i class="bi bi-cup-hot"></i> Browse All Cafés
+          </a>
+          <button class="btn-lucky" onclick="feelingLucky()">
+            💅 I'm Feeling Lucky
+          </button>
+          <a href="{{ url_for('add_cafe') }}" class="btn-outline-white">
+            <i class="bi bi-plus-circle"></i> Add a Café
+          </a>
+        {% else %}
+          <a href="{{ url_for('register') }}" class="btn-primary-green">
+            <i class="bi bi-cup-hot"></i> Browse Cafés
+          </a>
+          <a href="{{ url_for('register') }}" class="btn-outline-white">
+            <i class="bi bi-person-plus"></i> Sign Up Free
+          </a>
+        {% endif %}
+      </div>
     </div>
+  </div>
 </section>
-{% endblock%}
+
+<!-- CAFE PREVIEW -->
+<section class="preview-section">
+  <div class="preview-label">✦ Featured Cafés ✦</div>
+
+  <div class="preview-grid">
+    {% for cafe in cafes %}
+
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('cafe_details', cafe_id=cafe.id) }}" class="preview-card">
+      {% else %}
+        <a href="{{ url_for('login') }}" class="preview-card preview-card-locked">
+      {% endif %}
+
+        <img src="{{ cafe.img_url }}"
+             alt="{{ cafe.name }}"
+             onerror="this.src='https://placehold.co/400x160/1c1c1c/333?text=☕'">
+
+        <div class="preview-card-body">
+          <div class="preview-card-name">{{ cafe.name }}</div>
+          <div class="preview-card-loc"><i class="bi bi-geo-alt"></i> {{ cafe.location }}</div>
+          <div class="preview-badges">
+            {% if cafe.has_wifi %}
+            <span class="pbadge pbadge-wifi">📶 WiFi</span>
+            {% endif %}
+            {% if cafe.coffee_price %}
+            <span class="pbadge pbadge-price">☕ {{ cafe.coffee_price }}</span>
+            {% endif %}
+            {% if cafe.seats %}
+            <span class="pbadge pbadge-seats">🪑 {{ cafe.seats }}</span>
+            {% endif %}
+          </div>
+        </div>
+
+      </a>
+    {% endfor %}
+  </div>
+
+  <!-- CTA Banner -->
+  {% if not current_user.is_authenticated %}
+  <div class="cta-banner" data-aos="fade-up">
+    <h3>See all {{ cafes|length }}+ cafés and more</h3>
+    <p>Create a free account to explore every café, view details, and contribute to the community.</p>
+    <div class="cta-buttons">
+      <a href="{{ url_for('register') }}" class="btn-primary-green">
+        <i class="bi bi-person-plus"></i> Create Free Account
+      </a>
+      <a href="{{ url_for('login') }}" class="btn-outline-white">
+        <i class="bi bi-box-arrow-in-right"></i> Sign In
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div class="cta-banner" data-aos="fade-up">
+    <h3>Know a great café?</h3>
+    <p>Help the community grow by adding a spot you love.</p>
+    <div class="cta-buttons">
+      <a href="{{ url_for('cafes_page') }}" class="btn-primary-green">
+        <i class="bi bi-grid"></i> View All Cafés
+      </a>
+      <a href="{{ url_for('add_cafe') }}" class="btn-outline-white">
+        <i class="bi bi-plus-circle"></i> Add a Café
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  {% if current_user.is_authenticated %}
+  async function feelingLucky() {
+    const btn = document.querySelector('.btn-lucky');
+    btn.classList.add('spinning');
+    btn.innerHTML = '✨ Finding your café...';
+
+    setTimeout(() => btn.classList.remove('spinning'), 400);
+
+    try {
+      const res = await fetch("{{ url_for('get_random_cafe') }}");
+      const data = await res.json();
+      const cafe = data.cafe;
+
+      const old = document.getElementById('lucky-popup');
+      if (old) old.remove();
+
+      const popup = document.createElement('div');
+      popup.id = 'lucky-popup';
+      popup.className = 'lucky-popup';
+      popup.style.position = 'fixed';
+
+      popup.innerHTML = `
+        <button class="lucky-dismiss" onclick="event.stopPropagation(); document.getElementById('lucky-popup').remove()">✕</button>
+        <div class="lucky-popup-tag">🎲 Your Lucky Café</div>
+        <img src="${cafe.img_url}"
+             alt="${cafe.name}"
+             onerror="this.src='https://placehold.co/320x120/1c1c1c/333?text=☕'">
+        <div class="lucky-popup-name">${cafe.name}</div>
+        <div class="lucky-popup-loc">📍 ${cafe.location}</div>
+        <div class="lucky-popup-badges">
+          ${cafe.has_wifi ? '<span class="pbadge pbadge-wifi">📶 WiFi</span>' : ''}
+          ${cafe.coffee_price ? `<span class="pbadge pbadge-price">☕ ${cafe.coffee_price}</span>` : ''}
+          ${cafe.seats ? `<span class="pbadge pbadge-seats">🪑 ${cafe.seats}</span>` : ''}
+        </div>
+        <div class="lucky-popup-cta">View this café <i class="bi bi-arrow-right"></i></div>
+      `;
+
+      // Click popup to go to cafe page
+      popup.addEventListener('click', () => {
+        window.location.href = `/cafe/${cafe.id}`;
+      });
+
+      document.body.appendChild(popup);
+      requestAnimationFrame(() => popup.classList.add('show'));
+
+      // Auto dismiss after 6 seconds
+      setTimeout(() => {
+        popup.classList.remove('show');
+        setTimeout(() => popup.remove(), 400);
+      }, 6000);
+
+    } catch(e) {
+      console.error(e);
+    } finally {
+      btn.innerHTML = "🎲 I'm Feeling Lucky";
+    }
+  }
+  {% endif %}
+</script>
+{% endblock %}

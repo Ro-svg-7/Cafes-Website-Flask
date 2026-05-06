@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, make_response, abort
+from flask import Flask, render_template, request, jsonify, redirect, url_for, make_response, abort, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import Integer, String, Boolean, inspect, select
@@ -11,16 +11,7 @@ app.secret_key = 'my-secret-key'
 
 login_manager = LoginManager()
 login_manager.init_app(app)
-
-@login_manager.user_loader
-def load_user(user_id):
-    print(user_id)
-    user_found = db.session.execute(db.select(Users).where(Users.id == user_id)).scalar()
-    if user_found:
-        print("User loaded successfully.")
-        return user_found
-    print("User not loaded")
-    return abort(404)
+login_manager.login_view = "login"  # type: ignore
 
 #Creating DataBase
 class Base(DeclarativeBase):
@@ -80,6 +71,11 @@ class Reports(db.Model):
     user = relationship("Users", back_populates="reports")
     cafe = relationship("Cafe", back_populates="reports")
 
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.execute(db.select(Users).where(Users.id == user_id)).scalar()
+
+
 with app.app_context():
 
     db.create_all()
@@ -109,7 +105,8 @@ def register():
         ).scalar()
 
         if exisiting_user:
-            return "User already exists. Please log in instead."
+            flash("User already exists. Please log in instead.", "error")
+            return redirect(url_for("register"))
         
         hashed_password = generate_password_hash(password)
 
@@ -136,10 +133,12 @@ def login():
         ).scalar()
 
         if not user:
-            return "User Not Found."
+            flash("User not found.", "error")
+            return redirect(url_for("login"))
         
         if not check_password_hash(user.password, password):
-            return "Wrong Password. Please Try Again."
+            flash("Wrong Password. Please Try Again.", "error")
+            return redirect(url_for("login"))
 
         login_user(user)
         return redirect(url_for("cafes_page"))
@@ -151,10 +150,102 @@ def logout():
     logout_user()
     return redirect(url_for("homepage"))
 
+@app.route("/fix-images", methods=["GET", "POST"])
+def fix_images():
+    message = ""
+    
+    if request.method == "POST":
+        cafe_id = request.form.get("cafe_id", "").strip()
+        img_url = request.form.get("img_url", "").strip()
+        
+        if cafe_id and cafe_id.isdigit():
+            cafe = db.session.get(Cafe, int(cafe_id))
+            if cafe:
+                cafe.img_url = img_url
+                db.session.commit()
+                message = f'<p style="color:#4caf7d">✅ Updated <strong>{cafe.name}</strong> successfully!</p>'
+            else:
+                message = f'<p style="color:#ff6060">❌ No café found with ID {cafe_id}. Check the ID below.</p>'
+        else:
+            message = '<p style="color:#ff6060">❌ Invalid ID entered.</p>'
+
+    cafes = db.session.execute(db.select(Cafe)).scalars().all()
+    rows = ""
+    for cafe in cafes:
+        broken = "⚠️" if not cafe.img_url or cafe.img_url == "" else "✅"
+        rows += f"""
+        <tr>
+          <td style="padding:0.5rem 1rem;color:#aaa">{cafe.id}</td>
+          <td style="padding:0.5rem 1rem;color:#fff">{cafe.name}</td>
+          <td style="padding:0.5rem 1rem;font-size:0.75rem;color:#666;max-width:300px;word-break:break-all">{cafe.img_url or 'EMPTY'}</td>
+          <td style="padding:0.5rem 1rem">{broken}</td>
+        </tr>
+        """
+
+    return f"""
+    <html>
+    <body style="background:#111;color:#fff;font-family:sans-serif;padding:2rem">
+      <h2>🖼 Fix Café Images</h2>
+      {message}
+
+      <h3 style="margin-top:2rem">All Cafés</h3>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:2rem">
+        <thead>
+          <tr style="border-bottom:1px solid #333">
+            <th style="padding:0.5rem 1rem;text-align:left;color:#888">ID</th>
+            <th style="padding:0.5rem 1rem;text-align:left;color:#888">Name</th>
+            <th style="padding:0.5rem 1rem;text-align:left;color:#888">Current Image URL</th>
+            <th style="padding:0.5rem 1rem;text-align:left;color:#888">Status</th>
+          </tr>
+        </thead>
+        <tbody>{rows}</tbody>
+      </table>
+
+      <h3>Update Image URL</h3>
+      <form method="POST">
+        <label style="color:#aaa;font-size:0.85rem">Café ID (from table above):</label><br>
+        <input name="cafe_id" type="number" min="1"
+               style="padding:0.5rem;margin:0.4rem 0 1rem;display:block;width:120px;background:#222;border:1px solid #444;color:#fff;border-radius:6px"><br>
+        <label style="color:#aaa;font-size:0.85rem">New Image URL:</label><br>
+        <input name="img_url" type="text"
+               style="padding:0.5rem;margin:0.4rem 0 1rem;display:block;width:600px;background:#222;border:1px solid #444;color:#fff;border-radius:6px"
+               placeholder="https://images.unsplash.com/..."><br>
+        <button type="submit"
+                style="background:#4caf7d;border:none;padding:0.6rem 1.5rem;color:#000;font-weight:700;cursor:pointer;border-radius:6px;font-size:0.9rem">
+          ✅ Update
+        </button>
+      </form>
+
+      <p style="margin-top:3rem;font-size:0.75rem;color:#444">
+        ⚠️ Delete this route from main.py when done.
+      </p>
+    </body>
+    </html>
+    """
+
+@app.route("/fix-images", methods=["POST"])
+def fix_images_post():
+    cafe_id = request.form.get("cafe_id")
+    img_url = request.form.get("img_url")
+    
+    cafe = db.session.get(Cafe,cafe_id)
+    if cafe:
+        cafe.img_url = str(img_url)
+        db.session.commit()
+        return f"""
+        <html>
+        <body style="background:#111;color:#fff;font-family:sans-serif;padding:2rem">
+            <p style="color:#4caf7d">✅ Updated <strong>{cafe.name}</strong> successfully!</p>
+            <a href="/fix-images" style="color:#4caf7d">← Go back</a>
+        </body>
+        </html>
+        """
+    return "<p style='color:red'>Café not found</p>"
 
 @app.route("/")
 def homepage():
-    return render_template("index.html")
+    cafes = db.session.execute(db.select(Cafe).order_by(func.random()).limit(6)).scalars().all()
+    return render_template("index.html", cafes=cafes)
 
 #HTTP GET - Read Record
 @app.route("/random", methods=["GET"])
@@ -167,6 +258,7 @@ def get_random_cafe():
     return jsonify(error={"Not Found": "No Cafe in the Database."}), 404
 
 @app.route("/cafes", methods=["GET"])
+@login_required
 def cafes_page():
     print("CAFES ROUTE HIT 🔥")
     cafes = db.session.execute(db.select(Cafe)).scalars().all()
@@ -174,11 +266,13 @@ def cafes_page():
     return render_template("cafes.html", cafes=cafes)
 
 @app.route("/cafe/<int:cafe_id>", methods=["GET"])
+@login_required
 def cafe_details(cafe_id):
     cafe = db.session.get(Cafe, cafe_id)
     return render_template("cafe_home.html", cafe=cafe)
 #HTTP POST - Add Record
 @app.route("/cafes/add", methods=["GET", "POST"])
+@login_required
 def add_cafe():
     if request.method == "POST":
         new_cafe = Cafe(

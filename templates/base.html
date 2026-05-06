@@ -50,13 +50,23 @@
 
       <nav id="navmenu" class="navmenu">
         <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="/cafes"
+        <li><a href="{{ url_for('homepage') }}"
+          class="{% if request.path == '/' %}active{% endif %}">Home</a></li>
+        {% if current_user.is_authenticated %}
+        <li><a href="{{ url_for('cafes_page') }}"
             class="{% if request.path == '/cafes' %}active{% endif %}">Cafés</a></li>
-        <li><a href="/cafes/add"
+        <li><a href="{{ url_for('add_cafe') }}"
             class="{% if request.path == '/cafes/add' %}active{% endif %}">Add a Café</a></li>
-        <li><a>Login</a></li>
-        <li><a>Sign up</a></li>
+        <li><a href="#" style="color:#4caf7d;cursor:default">
+          😉 {{ current_user.name }}
+        </a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        {% else %}
+        <li><a href="{{ url_for('login') }}"
+          class="{% if request.path == '/login' %}active{% endif %}">Login</a></li>
+        <li><a href="{{ url_for('register') }}"
+          class="{% if request.path == '/register' %}active{% endif %}">Sign Up</a></li>
+        {% endif %}
         </ul>
         <i class="mobile-nav-toggle d-xl-none bi bi-list"></i>
       </nav>
